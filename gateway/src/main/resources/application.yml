@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: api-gateway
+
+  config:
+    import: optional:configserver:http://localhost:8888
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: goal-service-local
+              uri: lb://ACTIVITY-SERVICE
+              predicates:
+                - Path=/api/goals/**
