@@ -1,0 +1,7 @@
+FROM quay.io/keycloak/keycloak:26.3
+
+ENV KC_HTTP_PORT=8080
+ENV KC_HEALTH_ENABLED=true
+
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
+CMD ["start-dev", "--http-port=8080"]
