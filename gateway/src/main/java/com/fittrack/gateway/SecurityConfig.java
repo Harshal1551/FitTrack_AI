@@ -2,6 +2,7 @@ package com.fittrack.gateway;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -22,25 +23,62 @@ public class SecurityConfig {
 
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
+
+                // Enable CORS
+                .cors(Customizer.withDefaults())
+
                 .authorizeExchange(exchange -> exchange
-                        .pathMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Allow browser preflight requests
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // All other requests require authentication
                         .anyExchange().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+
+                // JWT authentication
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.jwt(Customizer.withDefaults())
+                )
+
                 .build();
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource(){
+    public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(Arrays.asList("Authorization","Content-Type", "X-User-ID"));
+
+        // Allow local + deployed frontend
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "https://fittrack-frontend-pixv.onrender.com"
+        ));
+
+        // Allowed HTTP methods
+        config.setAllowedMethods(Arrays.asList(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+        ));
+
+        // Allowed request headers
+        config.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-User-ID"
+        ));
+
+        // Allow cookies/credentials
         config.setAllowCredentials(true);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", config);
+
         return source;
     }
-
-
 }
