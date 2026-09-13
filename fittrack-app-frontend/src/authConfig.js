@@ -5,7 +5,7 @@ export const authConfig = {
 
   tokenEndpoint: `${import.meta.env.VITE_KEYCLOAK_URL || 'http://127.0.0.1:8181'}/realms/fittrack-oauth2/protocol/openid-connect/token`,
 
-  redirectUri: 'http://localhost:5173/',
+  redirectUri: window.location.origin + '/',
 
   scope: 'openid profile email offline_access',
 
