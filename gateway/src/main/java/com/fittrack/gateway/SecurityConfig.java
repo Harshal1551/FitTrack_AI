@@ -29,14 +29,13 @@ public class SecurityConfig {
 
                 .authorizeExchange(exchange -> exchange
 
-                        // Allow browser preflight requests
+                        // Allow browser CORS preflight requests
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // All other requests require authentication
+                        // Everything else requires authentication
                         .anyExchange().authenticated()
                 )
 
-                // JWT authentication
                 .oauth2ResourceServer(oauth2 ->
                         oauth2.jwt(Customizer.withDefaults())
                 )
@@ -44,18 +43,19 @@ public class SecurityConfig {
                 .build();
     }
 
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow local + deployed frontend
-        config.setAllowedOrigins(List.of(
+        // Local + Production frontend
+        config.setAllowedOrigins(Arrays.asList(
                 "http://localhost:5173",
                 "https://fittrack-frontend-pixv.onrender.com"
         ));
 
-        // Allowed HTTP methods
+        // HTTP methods
         config.setAllowedMethods(Arrays.asList(
                 "GET",
                 "POST",
@@ -64,20 +64,26 @@ public class SecurityConfig {
                 "OPTIONS"
         ));
 
-        // Allowed request headers
+        // Request headers
         config.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
                 "X-User-ID"
         ));
 
-        // Allow cookies/credentials
+        // Allow credentials
         config.setAllowCredentials(true);
+
+        // Expose useful response headers
+        config.setExposedHeaders(Arrays.asList(
+                "Authorization"
+        ));
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
-        source.registerCorsConfiguration("/**", config);
+        // Apply CORS configuration to API endpoints
+        source.registerCorsConfiguration("/api/**", config);
 
         return source;
     }
