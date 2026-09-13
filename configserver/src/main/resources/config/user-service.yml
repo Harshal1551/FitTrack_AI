@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/fitness_user_db
+    url: jdbc:postgresql://db.oybyzuyykkntpfkrvqpk.supabase.co:5432/postgres
     username: postgres
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver

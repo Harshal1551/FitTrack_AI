@@ -28,37 +28,60 @@ public class ActivityAIService {
         return processAiResponse(activity, aiResponse);
     }
 
-    private Recommendation processAiResponse(Activity activity, String aiResponse){
-        try{
+    private Recommendation processAiResponse(Activity activity, String aiResponse) {
+        try {
             ObjectMapper mapper = new ObjectMapper();
-            JsonNode rootNode = mapper.readTree(aiResponse);
 
-            JsonNode textNode = rootNode.path("candidates")
-                    .get(0)
-                    .path("content")
-                    .path("parts")
-                    .get(0)
-                    .path("text");
-            String jsonContent = textNode.asText()
-                    .replaceAll("```json\\n", "")
-                    .replaceAll("\\n```","")
+            // GeminiService has already extracted the actual text response.
+            // So aiResponse is already our JSON content.
+            String jsonContent = aiResponse
+                    .replaceFirst("^```json\\s*", "")
+                    .replaceFirst("^```\\s*", "")
+                    .replaceFirst("\\s*```$", "")
                     .trim();
-//            log.info("PARSED RESPONSE FROM AI: {} ", jsonContent);
 
             JsonNode analysisJson = mapper.readTree(jsonContent);
+
             JsonNode analysisNode = analysisJson.path("analysis");
 
             StringBuilder fullAnalysis = new StringBuilder();
-            addAnalysisSection(fullAnalysis, analysisNode, "overall", "Overall:");
-            addAnalysisSection(fullAnalysis, analysisNode, "pace", "Pace:");
-            addAnalysisSection(fullAnalysis, analysisNode, "heartRate", "Heart Rate:");
-            addAnalysisSection(fullAnalysis, analysisNode, "caloriesBurned", "Calories:");
 
-            List<String> improvements = extractImprovements(analysisJson.path("improvements"));
+            addAnalysisSection(
+                    fullAnalysis,
+                    analysisNode,
+                    "overall",
+                    "Overall:"
+            );
 
-            List<String> suggestions = extractSuggestions(analysisJson.path("suggestions"));
+            addAnalysisSection(
+                    fullAnalysis,
+                    analysisNode,
+                    "pace",
+                    "Pace:"
+            );
 
-            List<String> safety = extractSafetyGuidelines(analysisJson.path("safety"));
+            addAnalysisSection(
+                    fullAnalysis,
+                    analysisNode,
+                    "heartRate",
+                    "Heart Rate:"
+            );
+
+            addAnalysisSection(
+                    fullAnalysis,
+                    analysisNode,
+                    "caloriesBurned",
+                    "Calories:"
+            );
+
+            List<String> improvements =
+                    extractImprovements(analysisJson.path("improvements"));
+
+            List<String> suggestions =
+                    extractSuggestions(analysisJson.path("suggestions"));
+
+            List<String> safety =
+                    extractSafetyGuidelines(analysisJson.path("safety"));
 
             return Recommendation.builder()
                     .activityId(activity.getId())
@@ -72,7 +95,7 @@ public class ActivityAIService {
                     .build();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to process AI response: {}", aiResponse, e);
             return createDefaultRecommendation(activity);
         }
     }

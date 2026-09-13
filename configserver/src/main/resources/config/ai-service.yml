@@ -3,11 +3,11 @@ server:
 
 spring:
   mongodb:
-    uri: mongodb://127.0.0.1:27017/fitnessactivity
+    uri: ${MONGODB_URI}
 
   rabbitmq:
-    host: localhost
-    port: 5672
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
     username: ${RABBITMQ_USERNAME}
     password: ${RABBITMQ_PASSWORD}
 
