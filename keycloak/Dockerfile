@@ -4,8 +4,7 @@ ENV KC_HTTP_PORT=10000
 ENV KC_HTTP_HOST=0.0.0.0
 ENV KC_HEALTH_ENABLED=true
 
-RUN /opt/keycloak/bin/kc.sh build
-
+RUN /opt/keycloak/bin/kc.sh build --db=postgres
 EXPOSE 10000
 
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
