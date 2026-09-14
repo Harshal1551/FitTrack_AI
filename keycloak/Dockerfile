@@ -9,4 +9,4 @@ RUN /opt/keycloak/bin/kc.sh build
 EXPOSE 10000
 
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
-CMD ["start-dev", "--http-port=10000", "--http-host=0.0.0.0"]
+CMD ["start", "--optimized", "--http-port=10000", "--http-host=0.0.0.0"]
