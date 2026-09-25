@@ -40,5 +40,9 @@ export const createGoal = (goal) =>
 export const deleteGoal = (goalId) => api.delete(`/goals/${goalId}`);
 
 export const getFitnessAdvice = (userId) =>
-  api.post("/coach/advice", { userId });
+    api.post("/coach/advice", { userId });
 
+export const getActivityById = (id) => api.get(`/activities/${id}`);
+
+export const getAdaptivePlan = () =>
+    api.get("/adaptive/plan");

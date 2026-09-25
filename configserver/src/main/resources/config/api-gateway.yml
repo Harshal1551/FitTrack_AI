@@ -30,7 +30,12 @@ spring:
             - id: ai-coach-service
               uri: lb://AI-SERVICE
               predicates:
-                  - Path=/api/coach/**
+                - Path=/api/coach/**
+
+            - id: adaptive-ai-service
+              uri: lb://AI-SERVICE
+              predicates:
+                - Path=/api/adaptive/**
 
 
             - id: goal-service
