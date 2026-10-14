@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   FormControl,
@@ -7,7 +7,10 @@ import {
   Select,
   TextField,
 } from "@mui/material";
-import { addActivities } from "../services/api";
+import {
+  addActivities,
+  getUserProfile,
+} from "../services/api";
 
 const ACTIVITY_TYPES = [
   { value: "RUNNING", label: "🏃 Running" },
@@ -22,6 +25,19 @@ const ACTIVITY_TYPES = [
   { value: "OTHER", label: "✨ Other" },
 ];
 
+const MET_VALUES = {
+  RUNNING: 8.0,
+  WALKING: 3.5,
+  SWIMMING: 6.0,
+  CYCLING: 7.5,
+  WEIGHT_TRAINING: 5.0,
+  YOGA: 3.0,
+  HIIT: 8.0,
+  CARDIO: 6.0,
+  STRETCHING: 2.3,
+  OTHER: 3.5,
+};
+
 const ActivityForm = ({ onActivitiesAdded }) => {
   const [activity, setActivity] = useState({
     type: "RUNNING",
@@ -29,17 +45,66 @@ const ActivityForm = ({ onActivitiesAdded }) => {
     additionalMetrics: {},
   });
 
+  const [weightKg, setWeightKg] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const keycloakId = localStorage.getItem("userId");
+
+        if (!keycloakId) {
+          setErrorMessage("Please sign in to calculate calories.");
+          return;
+        }
+
+        const response = await getUserProfile(keycloakId);
+        const weight = Number(response.data.weightKg);
+
+        if (Number.isFinite(weight) && weight > 0) {
+          setWeightKg(weight);
+        } else {
+          setErrorMessage(
+            "Please save your weight in your profile to calculate calories."
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load profile:", error);
+        setErrorMessage(
+          "Could not load your profile weight. Please check your profile."
+        );
+      }
+    };
+
+    loadProfile();
+  }, []);
+
+  const duration = Number(activity.duration);
+
+  const estimatedCalories =
+    weightKg &&
+    Number.isFinite(duration) &&
+    duration > 0
+      ? Math.round(
+          ((MET_VALUES[activity.type] * 3.5 * weightKg) / 200) *
+            duration
+        )
+      : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
 
-    const duration = Number(activity.duration);
-
     if (!Number.isFinite(duration) || duration <= 0) {
       setErrorMessage("Please enter a duration greater than zero.");
+      return;
+    }
+
+    if (!weightKg) {
+      setErrorMessage(
+        "A valid saved profile weight is required before logging an activity."
+      );
       return;
     }
 
@@ -128,13 +193,23 @@ const ActivityForm = ({ onActivitiesAdded }) => {
               duration: e.target.value,
             }))
           }
-          slotProps={{
-            htmlInput: {
-              min: 1,
-              step: 1,
-            },
+          inputProps={{
+            min: 1,
+            step: 1,
           }}
         />
+
+        <Box
+          className="rounded-xl border border-border p-3"
+          sx={{ minHeight: 56 }}
+        >
+          <p className="text-xs text-muted">Estimated Calories Burned</p>
+          <p className="text-xl font-semibold">
+            {estimatedCalories !== null
+              ? `${estimatedCalories} kcal`
+              : "-- kcal"}
+          </p>
+        </Box>
 
         <div className="md:col-span-3">
           {errorMessage && (
@@ -145,7 +220,7 @@ const ActivityForm = ({ onActivitiesAdded }) => {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !weightKg}
             className="px-6 py-3 rounded-xl bg-primary text-bg font-semibold hover:bg-primary/90 transition shadow-glow disabled:opacity-50"
           >
             {submitting ? "Saving..." : "Add Activity"}
@@ -154,7 +229,8 @@ const ActivityForm = ({ onActivitiesAdded }) => {
       </Box>
 
       <p className="text-xs text-muted mt-4">
-        Calories are estimated automatically using your saved profile weight.
+        Calories are estimated using your saved profile weight and activity
+        duration. The backend calculates and saves the final value.
       </p>
     </div>
   );
