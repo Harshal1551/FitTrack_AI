@@ -5,9 +5,19 @@ export const authConfig = {
 
   tokenEndpoint: `${import.meta.env.VITE_KEYCLOAK_URL || 'http://127.0.0.1:8181'}/realms/fittrack-oauth2/protocol/openid-connect/token`,
 
+  logoutEndpoint: `${import.meta.env.VITE_KEYCLOAK_URL || 'http://127.0.0.1:8181'}/realms/fittrack-oauth2/protocol/openid-connect/logout`,
+
+  redirectUri: window.location.origin + '/',
+
   redirectUri: window.location.origin + '/',
 
   scope: 'openid profile email offline_access',
 
-  onRefreshTokenExpire: (event) => event.logIn(),
-}
+  refreshTokenExpiryStrategy: 'renewable',
+  refreshTokenExpiresIn: 1800,
+
+  onRefreshTokenExpire: (event) => {
+    console.log('Refresh token expired. Login required.');
+    event.logIn();
+  },
+};

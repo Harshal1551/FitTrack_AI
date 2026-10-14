@@ -1,9 +1,12 @@
+
 package com.fittrack.activityservice.service;
 
 import com.fittrack.activityservice.dto.ActivityRequest;
 import com.fittrack.activityservice.dto.ActivityResponse;
 import com.fittrack.activityservice.dto.ActivityStatsResponse;
+import com.fittrack.activityservice.dto.UserProfileResponse;
 import com.fittrack.activityservice.model.Activity;
+import com.fittrack.activityservice.model.ActivityType;
 import com.fittrack.activityservice.model.Goal;
 import com.fittrack.activityservice.repository.ActivityRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,26 +28,58 @@ public class ActivityService {
     private final RabbitTemplate rabbitTemplate;
     private final GoalService goalService;
 
-
     @Value("${rabbitmq.exchange.name}")
     private String exchange;
 
     @Value("${rabbitmq.routing.key}")
     private String routingKey;
 
-    public ActivityResponse trackActivity(ActivityRequest request, String userId) {
+    public ActivityResponse trackActivity(
+            ActivityRequest request, String userId) {
 
-        boolean isValidUser = userValidationService.validateUser(userId);
+        boolean isValidUser =
+                userValidationService.validateUser(userId);
 
-        if(!isValidUser){
+        if (!isValidUser) {
             throw new RuntimeException("Invalid User: " + userId);
         }
+
+        if (request.getType() == null) {
+            throw new RuntimeException("Activity type is required.");
+        }
+
+        if (request.getDuration() == null
+                || request.getDuration() <= 0) {
+            throw new RuntimeException(
+                    "Duration must be greater than zero.");
+        }
+
+        // Fetch the user's saved profile and weight.
+        UserProfileResponse userProfile =
+                userValidationService.getUserProfile(userId);
+
+        if (userProfile == null
+                || userProfile.getWeightKg() == null
+                || userProfile.getWeightKg() <= 0) {
+            throw new RuntimeException(
+                    "Please add a valid weight to your user profile "
+                            + "before tracking activities.");
+        }
+
+        double weightKg = userProfile.getWeightKg();
+
+        // Calculate calories automatically.
+        int caloriesBurned = calculateCaloriesBurned(
+                request.getType(),
+                request.getDuration(),
+                weightKg
+        );
 
         Activity activity = Activity.builder()
                 .userId(userId)
                 .type(request.getType())
                 .duration(request.getDuration())
-                .caloriesBurned(request.getCaloriesBurned())
+                .caloriesBurned(caloriesBurned)
                 .startTime(request.getStartTime())
                 .additionalMetrics(request.getAdditionalMetrics())
                 .build();
@@ -53,7 +88,8 @@ public class ActivityService {
 
         List<Goal> goals = goalService.getUserGoals(userId);
 
-        List<Activity> userActivities = activityRepository.findByUserId(userId);
+        List<Activity> userActivities =
+                activityRepository.findByUserId(userId);
 
         goalService.updateGoalProgress(
                 userId,
@@ -61,14 +97,41 @@ public class ActivityService {
                 userActivities
         );
 
-        // Publish to RabbitMQ for AI Processing
+        // Publish to RabbitMQ for AI processing.
         try {
-            rabbitTemplate.convertAndSend(exchange, routingKey, savedActivity);
+            rabbitTemplate.convertAndSend(
+                    exchange, routingKey, savedActivity);
         } catch (Exception e) {
-            log.error("Failed to publish activity to RabbitMQ : ", e);
+            log.error(
+                    "Failed to publish activity to RabbitMQ: ", e);
         }
 
         return mapToResponse(savedActivity);
+    }
+
+    private int calculateCaloriesBurned(
+            ActivityType type,
+            int durationMinutes,
+            double weightKg) {
+
+        double met = switch (type) {
+            case RUNNING -> 8.0;
+            case WALKING -> 3.5;
+            case SWIMMING -> 6.0;
+            case CYCLING -> 7.5;
+            case WEIGHT_TRAINING -> 5.0;
+            case YOGA -> 3.0;
+            case HIIT -> 8.0;
+            case CARDIO -> 6.0;
+            case STRETCHING -> 2.3;
+            case OTHER -> 3.5;
+        };
+
+        double calories =
+                (met * 3.5 * weightKg / 200.0)
+                        * durationMinutes;
+
+        return (int) Math.round(calories);
     }
 
     private ActivityResponse mapToResponse(Activity activity) {
@@ -81,7 +144,8 @@ public class ActivityService {
         response.setDuration(activity.getDuration());
         response.setCaloriesBurned(activity.getCaloriesBurned());
         response.setStartTime(activity.getStartTime());
-        response.setAdditionalMetrics(activity.getAdditionalMetrics());
+        response.setAdditionalMetrics(
+                activity.getAdditionalMetrics());
         response.setCreatedAt(activity.getCreatedAt());
         response.setUpdatedAt(activity.getUpdatedAt());
 
@@ -89,7 +153,9 @@ public class ActivityService {
     }
 
     public List<ActivityResponse> getUserActivities(String userId) {
-       List<Activity> activities = activityRepository.findByUserId(userId);
+
+        List<Activity> activities =
+                activityRepository.findByUserId(userId);
 
         return activities.stream()
                 .map(this::mapToResponse)
@@ -97,14 +163,17 @@ public class ActivityService {
     }
 
     public ActivityResponse getActivityById(String activityId) {
+
         return activityRepository.findById(activityId)
                 .map(this::mapToResponse)
-                .orElseThrow(() -> new RuntimeException("Activity not found with id: " + activityId));
+                .orElseThrow(() -> new RuntimeException(
+                        "Activity not found with id: " + activityId));
     }
 
     public ActivityStatsResponse getActivityStats(String userId) {
 
-        List<Activity> activities = activityRepository.findByUserId(userId);
+        List<Activity> activities =
+                activityRepository.findByUserId(userId);
 
         ActivityStatsResponse stats = new ActivityStatsResponse();
 
@@ -132,14 +201,18 @@ public class ActivityService {
         stats.setAverageDuration(averageDuration);
         stats.setAverageCalories(averageCalories);
 
-        // Calculate fitness score out of 100
+        // Calculate fitness score out of 100.
         int fitnessScore = 0;
 
         if (totalActivities > 0) {
-            int activityScore = Math.min(totalActivities * 10, 30);
-            int durationScore = Math.min(totalDuration / 10, 30);
-            int calorieScore = Math.min(totalCalories / 100, 20);
-            int consistencyScore = Math.min(averageDuration / 5, 20);
+            int activityScore =
+                    Math.min(totalActivities * 10, 30);
+            int durationScore =
+                    Math.min(totalDuration / 10, 30);
+            int calorieScore =
+                    Math.min(totalCalories / 100, 20);
+            int consistencyScore =
+                    Math.min(averageDuration / 5, 20);
 
             fitnessScore = activityScore
                     + durationScore

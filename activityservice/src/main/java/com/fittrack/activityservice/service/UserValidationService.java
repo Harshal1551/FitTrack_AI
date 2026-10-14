@@ -1,5 +1,6 @@
 package com.fittrack.activityservice.service;
 
+import com.fittrack.activityservice.dto.UserProfileResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,4 +29,24 @@ public class UserValidationService {
         }
         return false;
     }
+
+    public UserProfileResponse getUserProfile(String userId) {
+        try {
+            return userServiceWebClient.get()
+                    .uri("/api/users/keycloak/{keycloakId}", userId)
+                    .retrieve()
+                    .bodyToMono(UserProfileResponse.class)
+                    .block();
+
+        } catch (WebClientResponseException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new RuntimeException("User Not Found: " + userId);
+            }
+
+            throw new RuntimeException(
+                    "Failed to retrieve user profile: " + userId, e
+            );
+        }
+    }
+
 }

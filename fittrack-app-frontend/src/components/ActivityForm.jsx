@@ -1,8 +1,13 @@
-import React, { useState } from "react"
+import React, { useState } from "react";
 import {
-  Box, Button, FormControl, InputLabel, MenuItem, Select, TextField,
-} from "@mui/material"
-import { addActivities } from "../services/api"
+  Box,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+} from "@mui/material";
+import { addActivities } from "../services/api";
 
 const ACTIVITY_TYPES = [
   { value: "RUNNING", label: "🏃 Running" },
@@ -15,34 +20,59 @@ const ACTIVITY_TYPES = [
   { value: "CARDIO", label: "❤️ Cardio" },
   { value: "STRETCHING", label: "🤸 Stretching" },
   { value: "OTHER", label: "✨ Other" },
-]
+];
 
 const ActivityForm = ({ onActivitiesAdded }) => {
   const [activity, setActivity] = useState({
     type: "RUNNING",
     duration: "",
-    caloriesBurned: "",
     additionalMetrics: {},
-  })
-  const [submitting, setSubmitting] = useState(false)
+  });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
+    e.preventDefault();
+    setErrorMessage("");
+
+    const duration = Number(activity.duration);
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+      setErrorMessage("Please enter a duration greater than zero.");
+      return;
+    }
+
+    setSubmitting(true);
+
     try {
       await addActivities({
-        ...activity,
-        duration: Number(activity.duration),
-        caloriesBurned: Number(activity.caloriesBurned),
-      })
-      onActivitiesAdded()
-      setActivity({ type: "RUNNING", duration: "", caloriesBurned: "", additionalMetrics: {} })
+        type: activity.type,
+        duration,
+        additionalMetrics: activity.additionalMetrics,
+      });
+
+      setActivity({
+        type: "RUNNING",
+        duration: "",
+        additionalMetrics: {},
+      });
+
+      if (onActivitiesAdded) {
+        onActivitiesAdded();
+      }
     } catch (error) {
-      console.error(error)
+      console.error("Failed to add activity:", error);
+
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Failed to save activity. Please check your profile weight and try again."
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="p-6 rounded-2xl bg-surface border border-border mb-6">
@@ -53,40 +83,66 @@ const ActivityForm = ({ onActivitiesAdded }) => {
             Track your workout in seconds.
           </p>
         </div>
+
         <span className="text-2xl">➕</span>
       </div>
 
-      <Box component="form" onSubmit={handleSubmit} className="grid md:grid-cols-3 gap-4 items-end">
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
+        className="grid md:grid-cols-3 gap-4 items-end"
+      >
         <FormControl fullWidth>
-          <InputLabel>Activity Type</InputLabel>
+          <InputLabel id="activity-type-label">
+            Activity Type
+          </InputLabel>
+
           <Select
+            labelId="activity-type-label"
             value={activity.type}
             label="Activity Type"
-            onChange={(e) => setActivity({ ...activity, type: e.target.value })}
+            onChange={(e) =>
+              setActivity((previous) => ({
+                ...previous,
+                type: e.target.value,
+              }))
+            }
           >
-            {ACTIVITY_TYPES.map((t) => (
-              <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+            {ACTIVITY_TYPES.map((type) => (
+              <MenuItem key={type.value} value={type.value}>
+                {type.label}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
 
         <TextField
           fullWidth
+          required
           label="Duration (minutes)"
           type="number"
           value={activity.duration}
-          onChange={(e) => setActivity({ ...activity, duration: e.target.value })}
-        />
-
-        <TextField
-          fullWidth
-          label="Calories burned"
-          type="number"
-          value={activity.caloriesBurned}
-          onChange={(e) => setActivity({ ...activity, caloriesBurned: e.target.value })}
+          onChange={(e) =>
+            setActivity((previous) => ({
+              ...previous,
+              duration: e.target.value,
+            }))
+          }
+          slotProps={{
+            htmlInput: {
+              min: 1,
+              step: 1,
+            },
+          }}
         />
 
         <div className="md:col-span-3">
+          {errorMessage && (
+            <p className="text-sm text-red-500 mb-3" role="alert">
+              {errorMessage}
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={submitting}
@@ -96,8 +152,12 @@ const ActivityForm = ({ onActivitiesAdded }) => {
           </button>
         </div>
       </Box>
-    </div>
-  )
-}
 
-export default ActivityForm
+      <p className="text-xs text-muted mt-4">
+        Calories are estimated automatically using your saved profile weight.
+      </p>
+    </div>
+  );
+};
+
+export default ActivityForm;

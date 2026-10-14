@@ -46,3 +46,11 @@ export const getActivityById = (id) => api.get(`/activities/${id}`);
 
 export const getAdaptivePlan = () =>
     api.get("/adaptive/plan");
+
+
+// User profile APIs
+export const getUserProfile = (keycloakId) =>
+    api.get(`/users/keycloak/${keycloakId}`);
+
+export const updateUserProfile = (keycloakId, profileData) =>
+    api.put(`/users/keycloak/${keycloakId}`, profileData);

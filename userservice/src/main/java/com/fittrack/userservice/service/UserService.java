@@ -1,12 +1,12 @@
 package com.fittrack.userservice.service;
 
 import com.fittrack.userservice.dto.RegisterRequest;
+import com.fittrack.userservice.dto.UpdateProfileRequest;
 import com.fittrack.userservice.dto.UserResponse;
 import com.fittrack.userservice.model.User;
 import com.fittrack.userservice.repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -25,19 +25,8 @@ public class UserService {
 
             User savedUser = repository.save(existingUser);
 
-            UserResponse userResponse = new UserResponse();
-            userResponse.setId(savedUser.getId());
-            userResponse.setKeycloakId(savedUser.getKeycloakId());
-            userResponse.setPassword(savedUser.getPassword());
-            userResponse.setEmail(savedUser.getEmail());
-            userResponse.setFirstName(savedUser.getFirstName());
-            userResponse.setLastName(savedUser.getLastName());
-            userResponse.setCreatedAt(savedUser.getCreatedAt());
-            userResponse.setUpdatedAt(savedUser.getUpdatedAt());
-
-            return userResponse;
+            return mapToUserResponse(savedUser);
         }
-
 
         User user = new User();
         user.setEmail(request.getEmail());
@@ -47,38 +36,71 @@ public class UserService {
         user.setLastName(request.getLastName());
 
         User savedUser = repository.save(user);
-        UserResponse userResponse = new UserResponse();
-        userResponse.setKeycloakId(savedUser.getKeycloakId());
-        userResponse.setId(savedUser.getId());
-        userResponse.setPassword(savedUser.getPassword());
-        userResponse.setEmail(savedUser.getEmail());
-        userResponse.setFirstName(savedUser.getFirstName());
-        userResponse.setLastName(savedUser.getLastName());
-        userResponse.setCreatedAt(savedUser.getCreatedAt());
-        userResponse.setUpdatedAt(savedUser.getUpdatedAt());
 
-        return userResponse;
-
+        return mapToUserResponse(savedUser);
     }
 
     public UserResponse getUserProfile(String userId) {
+
         User user = repository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User Not Found"));
+                .orElseThrow(() ->
+                        new RuntimeException("User Not Found: " + userId));
 
-        UserResponse userResponse = new UserResponse();
-        userResponse.setId(user.getId());
-        userResponse.setPassword(user.getPassword());
-        userResponse.setEmail(user.getEmail());
-        userResponse.setFirstName(user.getFirstName());
-        userResponse.setLastName(user.getLastName());
-        userResponse.setCreatedAt(user.getCreatedAt());
-        userResponse.setUpdatedAt(user.getUpdatedAt());
+        return mapToUserResponse(user);
+    }
 
-        return userResponse;
+    public UserResponse getUserProfileByKeycloakId(String keycloakId) {
+
+        User user = repository.findByKeycloakId(keycloakId);
+
+        if (user == null) {
+            throw new RuntimeException(
+                    "User Not Found: " + keycloakId);
+        }
+
+        return mapToUserResponse(user);
+    }
+
+    public UserResponse updateProfile(
+            String keycloakId,
+            @Valid UpdateProfileRequest request) {
+
+        User user = repository.findByKeycloakId(keycloakId);
+
+        if (user == null) {
+            throw new RuntimeException(
+                    "User Not Found: " + keycloakId);
+        }
+
+        if (request.getWeightKg() == null) {
+            throw new RuntimeException(
+                    "Weight is required to update the profile.");
+        }
+
+        user.setWeightKg(request.getWeightKg());
+
+        User savedUser = repository.save(user);
+
+        return mapToUserResponse(savedUser);
     }
 
     public Boolean existByUserId(String userId) {
         return repository.existsByKeycloakId(userId);
     }
-}
 
+    private UserResponse mapToUserResponse(User user) {
+
+        UserResponse response = new UserResponse();
+
+        response.setId(user.getId());
+        response.setKeycloakId(user.getKeycloakId());
+        response.setEmail(user.getEmail());
+        response.setFirstName(user.getFirstName());
+        response.setLastName(user.getLastName());
+        response.setWeightKg(user.getWeightKg());
+        response.setCreatedAt(user.getCreatedAt());
+        response.setUpdatedAt(user.getUpdatedAt());
+
+        return response;
+    }
+}

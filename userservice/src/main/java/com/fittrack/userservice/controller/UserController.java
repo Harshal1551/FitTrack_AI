@@ -1,10 +1,13 @@
 package com.fittrack.userservice.controller;
 
 import com.fittrack.userservice.dto.RegisterRequest;
+import com.fittrack.userservice.dto.UpdateProfileRequest;
 import com.fittrack.userservice.dto.UserResponse;
 import com.fittrack.userservice.service.UserService;
+
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,21 +16,51 @@ import org.springframework.web.bind.annotation.*;
 @AllArgsConstructor
 public class UserController {
 
-    private UserService userService;
+    private final UserService userService;
 
     @GetMapping("/{userId}")
-    public ResponseEntity<UserResponse> getUserProfile(@PathVariable String userId){
-        return ResponseEntity.ok(userService.getUserProfile(userId));
+    public ResponseEntity<UserResponse> getUserProfile(
+            @PathVariable String userId) {
+
+        return ResponseEntity.ok(
+                userService.getUserProfile(userId)
+        );
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request ){
-        return ResponseEntity.ok(userService.register(request));
+    public ResponseEntity<UserResponse> register(
+            @Valid @RequestBody RegisterRequest request) {
+
+        return ResponseEntity.ok(
+                userService.register(request)
+        );
     }
 
     @GetMapping("/{userId}/validate")
-    public ResponseEntity<Boolean> validateUser(@PathVariable String userId){
-        return ResponseEntity.ok(userService.existByUserId(userId));
+    public ResponseEntity<Boolean> validateUser(
+            @PathVariable String userId) {
+
+        return ResponseEntity.ok(
+                userService.existByUserId(userId)
+        );
     }
 
+    @GetMapping("/keycloak/{keycloakId}")
+    public ResponseEntity<UserResponse> getUserProfileByKeycloakId(
+            @PathVariable String keycloakId) {
+
+        return ResponseEntity.ok(
+                userService.getUserProfileByKeycloakId(keycloakId)
+        );
+    }
+
+    @PutMapping("/keycloak/{keycloakId}")
+    public ResponseEntity<UserResponse> updateProfile(
+            @PathVariable String keycloakId,
+            @Valid @RequestBody UpdateProfileRequest request) {
+
+        return ResponseEntity.ok(
+                userService.updateProfile(keycloakId, request)
+        );
+    }
 }
